@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Internal Seat Reservation System
 
-## Getting Started
+Next.js App Router dashboard for internal venue table reservations with Prisma + PostgreSQL (Neon-ready) + Auth.js.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 (App Router, Server Actions)
+- Prisma ORM with PostgreSQL
+- Auth.js / NextAuth v5 with Google sign-in
+- Tailwind CSS + shadcn-style UI primitives (`dialog`, `input`, `toasts`)
+
+## Access Control
+
+Only these emails can sign in:
+
+- `admin1@domain.com`
+- `admin2@domain.com`
+- `admin3@domain.com`
+
+Access restriction is enforced in both:
+
+- Auth.js `signIn` callback
+- `middleware.ts` route protection
+
+## Neon Quickstart
+
+1. Create a Neon project and database in Neon Console.
+2. Copy both connection strings:
+- pooled connection string for app runtime
+- direct connection string for migrations
+3. Put them in `.env`:
+
+```env
+DATABASE_URL="postgresql://...neon.../db?sslmode=require&channel_binding=require"
+DIRECT_URL="postgresql://...neon.../db?sslmode=require&channel_binding=require"
+```
+
+## Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy environment variables and fill values:
+
+```bash
+cp .env.example .env
+```
+
+3. Generate Prisma client and migrate:
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate -- --name init
+```
+
+4. Seed tables:
+
+```bash
+npm run prisma:seed
+```
+
+5. Run dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Business Rules Implemented
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Red VVIP `A1` to `A20`: `500,000 MMK`, capacity `5`, max pax `6` (1 extra free)
+- Yellow VIP `B1` to `B15`: `400,000 MMK`, capacity `5`, max pax `6` (1 extra = `35,000 MMK`)
+- Payment statuses: `AVAILABLE`, `BOOKED`, `DEPOSIT_PAID`, `FULLY_PAID`
