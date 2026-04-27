@@ -1,9 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { AUTHORIZED_EMAILS } from "@/lib/constants";
-
-const INTERNAL_LOGIN_EMAIL = "testing@gmail.com";
-const INTERNAL_LOGIN_PASSWORD = "11111111";
+import { ADMIN_CREDENTIALS, isAuthorizedEmail, normalizeEmail } from "@/lib/constants";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET ?? "dev-only-secret-change-me",
@@ -18,14 +15,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       authorize(credentials) {
-        const email = String(credentials?.email ?? "")
-          .trim()
-          .toLowerCase();
+        const email = normalizeEmail(String(credentials?.email ?? ""));
         const password = String(credentials?.password ?? "");
 
-        if (email === INTERNAL_LOGIN_EMAIL && password === INTERNAL_LOGIN_PASSWORD) {
+        if (isAuthorizedEmail(email) && ADMIN_CREDENTIALS[email as keyof typeof ADMIN_CREDENTIALS] === password) {
           return {
-            id: "internal-admin",
+            id: email,
             email,
             name: "Internal Admin",
           };
@@ -40,10 +35,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     async signIn({ user }) {
-      if (!user.email) return false;
-      return AUTHORIZED_EMAILS.includes(user.email as (typeof AUTHORIZED_EMAILS)[number]);
+      return isAuthorizedEmail(user.email);
     },
-    async session({ session }) {
+    async jwt({ token, user }) {
+      if (user?.email) {
+        token.email = normalizeEmail(user.email);
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && token.email) {
+        session.user.email = normalizeEmail(String(token.email));
+      }
       return session;
     },
   },

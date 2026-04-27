@@ -13,9 +13,9 @@ Next.js App Router dashboard for internal venue table reservations with Prisma +
 
 Only these emails can sign in:
 
-- `admin1@domain.com`
-- `admin2@domain.com`
-- `admin3@domain.com`
+- `admin1@gmail.com`
+- `admin2@gmail.com`
+- `admin3@gmail.com`
 
 Access restriction is enforced in both:
 
@@ -70,6 +70,6 @@ npm run dev
 
 ## Business Rules Implemented
 
-- Red VVIP `A1` to `A20`: `500,000 MMK`, capacity `5`, max pax `6` (1 extra free)
+- Red VVIP `A1` to `A20`: `500,000 MMK`, capacity `5`, max pax `6` (1 extra = `35,000 MMK`)
 - Yellow VIP `B1` to `B15`: `400,000 MMK`, capacity `5`, max pax `6` (1 extra = `35,000 MMK`)
 - Payment statuses: `AVAILABLE`, `BOOKED`, `DEPOSIT_PAID`, `FULLY_PAID`

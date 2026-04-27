@@ -1,19 +1,72 @@
 "use server";
 
-import { PaymentStatus } from "@prisma/client";
+import { PaymentStatus, ReservationHistoryStatus, type Prisma, type TableType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
-import { AUTHORIZED_EMAILS } from "@/lib/constants";
+import { isAuthorizedEmail, normalizeEmail } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { calculatePrice, canFitPax } from "@/lib/utils";
 
 async function assertAuthorized() {
   const session = await auth();
   const email = session?.user?.email;
-  if (!email || !AUTHORIZED_EMAILS.includes(email as (typeof AUTHORIZED_EMAILS)[number])) {
+  if (!email || !isAuthorizedEmail(email)) {
     throw new Error("Unauthorized");
   }
+
+  return normalizeEmail(email);
+}
+
+function toHistoryStatus(status: PaymentStatus) {
+  if (status === PaymentStatus.BOOKED) return ReservationHistoryStatus.BOOKED;
+  if (status === PaymentStatus.DEPOSIT_PAID) return ReservationHistoryStatus.DEPOSIT_PAID;
+  return ReservationHistoryStatus.FULLY_PAID;
+}
+
+async function createHistoryEntry(
+  tx: Prisma.TransactionClient,
+  {
+    tableId,
+    tableType,
+    reservationDate,
+    customerName,
+    customerPhone,
+    pax,
+    extraCharge,
+    totalAmount,
+    status,
+    notes,
+    changedByEmail,
+  }: {
+    tableId: string;
+    tableType: TableType;
+    reservationDate: Date;
+    customerName?: string | null;
+    customerPhone?: string | null;
+    pax?: number | null;
+    extraCharge?: number | null;
+    totalAmount?: number | null;
+    status: ReservationHistoryStatus;
+    notes?: string | null;
+    changedByEmail?: string | null;
+  },
+) {
+  await tx.reservationHistory.create({
+    data: {
+      tableId,
+      tableType,
+      reservationDate,
+      customerName,
+      customerPhone,
+      pax,
+      extraCharge,
+      totalAmount,
+      status,
+      notes,
+      changedByEmail,
+    },
+  });
 }
 
 const createReservationSchema = z.object({
@@ -25,7 +78,7 @@ const createReservationSchema = z.object({
 });
 
 export async function createReservation(formData: FormData) {
-  await assertAuthorized();
+  const changedByEmail = await assertAuthorized();
   const payload = createReservationSchema.parse({
     tableId: formData.get("tableId"),
     customerName: formData.get("customerName"),
@@ -42,6 +95,7 @@ export async function createReservation(formData: FormData) {
   if (!table) {
     throw new Error("Table not found.");
   }
+
   if (table.reservation) {
     throw new Error("This table is already reserved.");
   }
@@ -50,24 +104,40 @@ export async function createReservation(formData: FormData) {
   }
 
   const { extraCharge, totalAmount } = calculatePrice(table.type, payload.pax);
-  await prisma.reservation.create({
-    data: {
+  await prisma.$transaction(async (tx) => {
+    const reservation = await tx.reservation.create({
+      data: {
+        tableId: table.id,
+        customerName: payload.customerName,
+        customerPhone: payload.customerPhone,
+        pax: payload.pax,
+        extraCharge,
+        totalAmount,
+        paymentStatus: PaymentStatus.BOOKED,
+        notes: payload.notes,
+      },
+    });
+
+    await createHistoryEntry(tx, {
       tableId: table.id,
-      customerName: payload.customerName,
-      customerPhone: payload.customerPhone,
-      pax: payload.pax,
-      extraCharge,
-      totalAmount,
-      paymentStatus: PaymentStatus.BOOKED,
-      notes: payload.notes,
-    },
+      tableType: table.type,
+      reservationDate: reservation.reservationDate,
+      customerName: reservation.customerName,
+      customerPhone: reservation.customerPhone,
+      pax: reservation.pax,
+      extraCharge: reservation.extraCharge,
+      totalAmount: reservation.totalAmount,
+      status: ReservationHistoryStatus.BOOKED,
+      notes: reservation.notes,
+      changedByEmail,
+    });
   });
 
   revalidatePath("/");
 }
 
 const updateStatusSchema = z.object({
-  tableId: z.string().min(2),
+  reservationId: z.string().min(2),
   paymentStatus: z.nativeEnum(PaymentStatus),
 });
 
@@ -79,14 +149,17 @@ const PAYMENT_FLOW: Record<PaymentStatus, PaymentStatus[]> = {
 };
 
 export async function updatePaymentStatus(formData: FormData) {
-  await assertAuthorized();
+  const changedByEmail = await assertAuthorized();
   const payload = updateStatusSchema.parse({
-    tableId: formData.get("tableId"),
+    reservationId: formData.get("reservationId"),
     paymentStatus: formData.get("paymentStatus"),
   });
 
   const reservation = await prisma.reservation.findUnique({
-    where: { tableId: payload.tableId },
+    where: { id: payload.reservationId },
+    include: {
+      table: true,
+    },
   });
   if (!reservation) {
     throw new Error("Reservation not found.");
@@ -97,26 +170,69 @@ export async function updatePaymentStatus(formData: FormData) {
     throw new Error("Invalid payment transition.");
   }
 
-  await prisma.reservation.update({
-    where: { tableId: payload.tableId },
-    data: { paymentStatus: payload.paymentStatus },
+  await prisma.$transaction(async (tx) => {
+    const updatedReservation = await tx.reservation.update({
+      where: { id: payload.reservationId },
+      data: { paymentStatus: payload.paymentStatus },
+    });
+
+    await createHistoryEntry(tx, {
+      tableId: reservation.tableId,
+      tableType: reservation.table.type,
+      reservationDate: reservation.reservationDate,
+      customerName: updatedReservation.customerName,
+      customerPhone: updatedReservation.customerPhone,
+      pax: updatedReservation.pax,
+      extraCharge: updatedReservation.extraCharge,
+      totalAmount: updatedReservation.totalAmount,
+      status: toHistoryStatus(payload.paymentStatus),
+      notes: updatedReservation.notes,
+      changedByEmail,
+    });
   });
 
   revalidatePath("/");
 }
 
 const cancelSchema = z.object({
-  tableId: z.string().min(2),
+  reservationId: z.string().min(2),
 });
 
 export async function cancelReservation(formData: FormData) {
-  await assertAuthorized();
+  const changedByEmail = await assertAuthorized();
   const payload = cancelSchema.parse({
-    tableId: formData.get("tableId"),
+    reservationId: formData.get("reservationId"),
   });
 
-  await prisma.reservation.delete({
-    where: { tableId: payload.tableId },
+  const reservation = await prisma.reservation.findUnique({
+    where: { id: payload.reservationId },
+    include: {
+      table: true,
+    },
+  });
+
+  if (!reservation) {
+    throw new Error("Reservation not found.");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await createHistoryEntry(tx, {
+      tableId: reservation.tableId,
+      tableType: reservation.table.type,
+      reservationDate: reservation.reservationDate,
+      customerName: reservation.customerName,
+      customerPhone: reservation.customerPhone,
+      pax: reservation.pax,
+      extraCharge: reservation.extraCharge,
+      totalAmount: reservation.totalAmount,
+      status: ReservationHistoryStatus.UNBOOKED,
+      notes: reservation.notes,
+      changedByEmail,
+    });
+
+    await tx.reservation.delete({
+      where: { id: payload.reservationId },
+    });
   });
 
   revalidatePath("/");

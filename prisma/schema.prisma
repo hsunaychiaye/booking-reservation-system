@@ -61,25 +61,57 @@ enum PaymentStatus {
   FULLY_PAID
 }
 
+enum ReservationHistoryStatus {
+  BOOKED
+  UNBOOKED
+  DEPOSIT_PAID
+  FULLY_PAID
+}
+
 model Table {
-  id          String       @id
+  id          String               @id
   type        TableType
   basePrice   Int
   capacity    Int
   reservation Reservation?
+  history     ReservationHistory[]
 }
 
 model Reservation {
-  id            String        @id @default(uuid())
-  tableId        String        @unique
-  table          Table         @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  customerName   String
-  customerPhone  String
-  pax            Int
-  extraCharge    Int
-  totalAmount    Int
-  paymentStatus  PaymentStatus @default(AVAILABLE)
-  notes          String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  tableId         String        @unique
+  table           Table         @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  reservationDate DateTime      @default(now())
+  customerName    String
+  customerPhone   String
+  pax             Int
+  extraCharge     Int
+  totalAmount     Int
+  paymentStatus   PaymentStatus @default(AVAILABLE)
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([reservationDate])
+}
+
+model ReservationHistory {
+  id              String                   @id @default(cuid())
+  tableId         String
+  table           Table                    @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  tableType       TableType
+  reservationDate DateTime                 @default(now())
+  customerName    String?
+  customerPhone   String?
+  pax             Int?
+  extraCharge     Int?
+  totalAmount     Int?
+  status          ReservationHistoryStatus
+  notes           String?
+  changedByEmail  String?
+  createdAt       DateTime                 @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([reservationDate, createdAt(sort: Desc)])
 }

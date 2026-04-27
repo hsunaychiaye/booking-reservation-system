@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { AUTHORIZED_EMAILS } from "@/lib/constants";
+import { isAuthorizedEmail } from "@/lib/constants";
 
 export default auth((req) => {
   const pathname = req.nextUrl.pathname;
@@ -15,7 +15,7 @@ export default auth((req) => {
   }
 
   const email = req.auth.user.email;
-  if (!email || !AUTHORIZED_EMAILS.includes(email as (typeof AUTHORIZED_EMAILS)[number])) {
+  if (!isAuthorizedEmail(email)) {
     return NextResponse.redirect(new URL("/access-denied", req.nextUrl));
   }
 

@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 
 export default function SignInPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("testing@gmail.com");
-  const [password, setPassword] = useState("11111111");
+  const [email, setEmail] = useState("admin1@gmail.com");
+  const [password, setPassword] = useState("admin1");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 

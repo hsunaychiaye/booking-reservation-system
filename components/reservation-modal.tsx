@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { STATUS_LABELS, TABLE_RULES } from "@/lib/constants";
-import { calculatePrice } from "@/lib/utils";
+import { calculatePrice, formatDateLabel } from "@/lib/utils";
 import type { TableWithReservation } from "@/components/seating-chart";
 
 export function ReservationModal({
@@ -145,7 +145,7 @@ export function ReservationModal({
             <ReservationInfo table={table} />
             {status !== PaymentStatus.FULLY_PAID && (
               <form action={submitStatus} className="space-y-3">
-                <input type="hidden" name="tableId" value={table.id} />
+                <input type="hidden" name="reservationId" value={table.reservation!.id} />
                 <input
                   type="hidden"
                   name="paymentStatus"
@@ -161,7 +161,7 @@ export function ReservationModal({
               </form>
             )}
             <form action={submitCancel}>
-              <input type="hidden" name="tableId" value={table.id} />
+              <input type="hidden" name="reservationId" value={table.reservation!.id} />
               <Button type="submit" variant="danger" disabled={pending} className="w-full">
                 Cancel Reservation
               </Button>
@@ -174,13 +174,11 @@ export function ReservationModal({
 }
 
 function PricePreview({ tableType, pax }: { tableType: TableType; pax: number }) {
-  if (tableType === TableType.VVIP) {
-    return <p className="text-xs text-[#FFEAEA]/75">VVIP supports up to 1 extra person at no fee.</p>;
-  }
   const extra = Math.max(0, pax - 5);
+  const label = tableType === TableType.VVIP ? "VVIP" : "VIP";
   return (
     <p className="text-xs text-[#FFEAEA]/75">
-      VIP extra rule: {extra} extra x 35,000 MMK if pax exceeds 5.
+      {label} extra rule: {extra} extra x 35,000 MMK if pax exceeds 5.
     </p>
   );
 }
@@ -196,6 +194,10 @@ function ReservationInfo({ table }: { table: TableWithReservation }) {
       </p>
       <p>
         <span className="text-[#F5CBCB]">Phone:</span> {reservation.customerPhone}
+      </p>
+      <p>
+        <span className="text-[#F5CBCB]">Reservation Date:</span>{" "}
+        {formatDateLabel(reservation.reservationDate.toISOString().slice(0, 10))}
       </p>
       <p>
         <span className="text-[#F5CBCB]">Pax:</span> {reservation.pax}
