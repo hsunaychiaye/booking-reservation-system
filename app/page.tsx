@@ -96,9 +96,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       {dbError ? (
         <section className="rounded-xl border border-red-300/60 bg-red-500/10 p-4 text-sm text-red-100">
           <p className="font-semibold">Database connection error</p>
-          <p className="mt-2">The app cannot reach PostgreSQL at `localhost:5432`.</p>
+          <p className="mt-2">The app cannot reach PostgreSQL using `DATABASE_URL`.</p>
           <p className="mt-2">
-            Start PostgreSQL, confirm `DATABASE_URL` in `.env`, then refresh this page.
+            Locally, confirm `DATABASE_URL` in `.env`. On Vercel, add `DATABASE_URL` in
+            Project Settings, then redeploy.
           </p>
         </section>
       ) : (

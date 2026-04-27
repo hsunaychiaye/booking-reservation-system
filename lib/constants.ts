@@ -40,9 +40,9 @@ export const PAYMENT_STATUS_COLORS: Record<PaymentStatus, string> = {
   [PaymentStatus.AVAILABLE]:
     "bg-slate-700/70 border-slate-500 text-[#FFEAEA] hover:bg-slate-700",
   [PaymentStatus.BOOKED]:
-    "bg-sky-600/80 border-sky-400 text-[#FFEAEA] hover:bg-sky-600",
+    "bg-[#8B5A2B] border-[#8B5A2B] text-[#FFEAEA] hover:bg-[#8B5A2B]",
   [PaymentStatus.DEPOSIT_PAID]:
-    "bg-orange-600/80 border-orange-300 text-white hover:bg-orange-600",
+    "bg-sky-600/80 border-sky-400 text-[#FFEAEA] hover:bg-sky-600",
   [PaymentStatus.FULLY_PAID]:
     "bg-emerald-600/80 border-emerald-300 text-[#FFEAEA] hover:bg-emerald-600",
 };
@@ -63,11 +63,11 @@ export const HISTORY_STATUS_LABELS: Record<ReservationHistoryStatus, string> = {
 
 export const HISTORY_STATUS_COLORS: Record<ReservationHistoryStatus, string> = {
   [ReservationHistoryStatus.BOOKED]:
-    "border-sky-300/70 bg-sky-500/20 text-sky-100",
+    "border-[#8B5A2B]/70 bg-[#8B5A2B]/20 text-[#FFEAEA]",
   [ReservationHistoryStatus.UNBOOKED]:
     "border-slate-400/70 bg-slate-500/20 text-slate-100",
   [ReservationHistoryStatus.DEPOSIT_PAID]:
-    "border-orange-300/70 bg-orange-500/20 text-orange-100",
+    "border-sky-300/70 bg-sky-500/20 text-sky-100",
   [ReservationHistoryStatus.FULLY_PAID]:
     "border-emerald-300/70 bg-emerald-500/20 text-emerald-100",
 };

@@ -35,6 +35,17 @@ DATABASE_URL="postgresql://...neon.../db?sslmode=require&channel_binding=require
 DIRECT_URL="postgresql://...neon.../db?sslmode=require&channel_binding=require"
 ```
 
+## Vercel Deployment
+
+Add these environment variables in Vercel Project Settings before deploying:
+
+```env
+DATABASE_URL="postgresql://...neon.../db?sslmode=require&channel_binding=require"
+AUTH_SECRET="replace-with-a-long-random-secret"
+```
+
+After changing environment variables, redeploy the project. If the database is new, apply Prisma migrations and seed the tables before using the dashboard.
+
 ## Setup
 
 1. Install dependencies:

@@ -1,6 +1,7 @@
 "use client";
 
 import { PaymentStatus, TableType } from "@prisma/client";
+import { Minus, Plus } from "lucide-react";
 import { startTransition, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -35,7 +36,13 @@ export function ReservationModal({
   const [pending, setPending] = useState(false);
   const [pax, setPax] = useState<number>(table.reservation?.pax ?? table.capacity);
   const status = table.reservation?.paymentStatus ?? PaymentStatus.AVAILABLE;
+  const maxPax = TABLE_RULES[table.type].maxPax;
   const quote = calculatePrice(table.type, pax);
+  const depositAmount = getDepositAmount(table.basePrice);
+
+  const setClampedPax = (nextPax: number) => {
+    setPax(Math.min(maxPax, Math.max(1, nextPax)));
+  };
 
   const submitCreate = (formData: FormData) => {
     setPending(true);
@@ -113,15 +120,40 @@ export function ReservationModal({
             </div>
             <div className="grid gap-2">
               <Label htmlFor={`pax-${table.id}`}>Pax</Label>
-              <Input
-                id={`pax-${table.id}`}
-                name="pax"
-                type="number"
-                min={1}
-                max={TABLE_RULES[table.type].maxPax}
-                value={pax}
-                onChange={(event) => setPax(Number(event.target.value || table.capacity))}
-              />
+              <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 px-0"
+                  disabled={pax <= 1}
+                  onClick={() => setClampedPax(pax - 1)}
+                  aria-label="Decrease pax"
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <Input
+                  id={`pax-${table.id}`}
+                  name="pax"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={maxPax}
+                  value={pax}
+                  className="h-11 text-center text-base font-semibold"
+                  onChange={(event) => setClampedPax(Number(event.target.value || table.capacity))}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 px-0"
+                  disabled={pax >= maxPax}
+                  onClick={() => setClampedPax(pax + 1)}
+                  aria-label="Increase pax"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-[#FFEAEA]/60">Maximum {maxPax} pax.</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor={`notes-${table.id}`}>Notes</Label>
@@ -155,8 +187,15 @@ export function ReservationModal({
                       : PaymentStatus.FULLY_PAID
                   }
                 />
+                {status === PaymentStatus.BOOKED ? (
+                  <div className="rounded-md border border-sky-300/50 bg-sky-500/10 p-3 text-sm text-sky-100">
+                    Deposit amount: {depositAmount.toLocaleString()} MMK
+                  </div>
+                ) : null}
                 <Button type="submit" disabled={pending} className="w-full">
-                  {status === PaymentStatus.BOOKED ? "Mark Deposit Paid" : "Mark Fully Paid"}
+                  {status === PaymentStatus.BOOKED
+                    ? `Mark Deposit Paid (${depositAmount.toLocaleString()} MMK)`
+                    : "Mark Fully Paid"}
                 </Button>
               </form>
             )}
@@ -183,9 +222,14 @@ function PricePreview({ tableType, pax }: { tableType: TableType; pax: number })
   );
 }
 
+function getDepositAmount(basePrice: number) {
+  return Math.floor(basePrice / 2);
+}
+
 function ReservationInfo({ table }: { table: TableWithReservation }) {
   if (!table.reservation) return null;
   const reservation = table.reservation;
+  const depositAmount = getDepositAmount(table.basePrice);
 
   return (
     <div className="rounded-md border border-[#9ECAD6]/50 bg-[#0f172a] p-4 text-sm text-[#FFEAEA]">
@@ -208,6 +252,18 @@ function ReservationInfo({ table }: { table: TableWithReservation }) {
       <p>
         <span className="text-[#F5CBCB]">Total:</span> {reservation.totalAmount.toLocaleString()} MMK
       </p>
+      {reservation.paymentStatus === PaymentStatus.BOOKED && (
+        <p>
+          <span className="text-[#F5CBCB]">Deposit Due:</span>{" "}
+          {depositAmount.toLocaleString()} MMK
+        </p>
+      )}
+      {reservation.paymentStatus === PaymentStatus.DEPOSIT_PAID && (
+        <p>
+          <span className="text-[#F5CBCB]">Remaining:</span>{" "}
+          {Math.max(0, reservation.totalAmount - depositAmount).toLocaleString()} MMK
+        </p>
+      )}
       {reservation.notes && (
         <p>
           <span className="text-[#F5CBCB]">Notes:</span> {reservation.notes}

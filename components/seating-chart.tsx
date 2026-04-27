@@ -51,17 +51,13 @@ const TABLE_LAYOUT: Record<string, { col: number; row: number }> = {
 	A5: { col: 13, row: 9 },
 };
 
-export function SeatingChart({
-	tables,
-}: {
-	tables: TableWithReservation[];
-}) {
+export function SeatingChart({ tables }: { tables: TableWithReservation[] }) {
 	return (
 		<section className="space-y-4">
 			<div className="grid gap-4 rounded-xl border border-[#9ECAD6]/60 bg-[#1f2937]/85 p-4 shadow-xl md:grid-cols-3">
 				<LegendBlock
 					label="Red VVIP (A Tables)"
-					className="bg-[#8b1e2d] text-[#FFEAEA]"
+					className="bg-[#B02029] text-[#FFEAEA]"
 				/>
 				<LegendBlock
 					label="Yellow VIP (B Tables)"
@@ -69,10 +65,11 @@ export function SeatingChart({
 				/>
 				<div className="grid gap-1 text-xs text-[#FFEAEA]/85">
 					<LegendStatus status={PaymentStatus.AVAILABLE} color="bg-slate-500" />
-					<LegendStatus status={PaymentStatus.BOOKED} color="bg-sky-500" />
+					<LegendExtraPerson />
+					<LegendStatus status={PaymentStatus.BOOKED} color="bg-[#8B5A2B]" />
 					<LegendStatus
 						status={PaymentStatus.DEPOSIT_PAID}
-						color="bg-orange-500"
+						color="bg-sky-500"
 					/>
 					<LegendStatus
 						status={PaymentStatus.FULLY_PAID}
@@ -115,7 +112,7 @@ export function SeatingChart({
 									<button
 										className={cn(
 											"relative h-12 w-full rounded-[4px] border text-lg font-bold tracking-wide shadow-sm transition-transform hover:-translate-y-0.5",
-											getSeatColorClasses(table.type, status),
+											getSeatColorClasses(table, status),
 										)}
 									>
 										{table.id}
@@ -129,7 +126,7 @@ export function SeatingChart({
 
 				<div className="mt-8 grid gap-6 border-t border-[#dccdb5] pt-6 text-center md:grid-cols-2">
 					<div>
-						<p className="text-3xl font-semibold italic text-[#8b1e2d]">
+						<p className="text-3xl font-semibold italic text-[#B02029]">
 							Red VVIP For 500000
 						</p>
 						<p className="mt-3 text-xl font-semibold text-slate-800">
@@ -190,6 +187,15 @@ function LegendStatus({
 	);
 }
 
+function LegendExtraPerson() {
+	return (
+		<div className="flex items-center gap-2">
+			<span className="h-2.5 w-2.5 rounded-full border-2 border-black bg-transparent" />
+			<span>Black border = Extra person</span>
+		</div>
+	);
+}
+
 function StaticLabel({
 	label,
 	className,
@@ -237,9 +243,9 @@ function StatusDot({ status }: { status: PaymentStatus }) {
 	if (status === PaymentStatus.AVAILABLE) return null;
 	const color =
 		status === PaymentStatus.BOOKED
-			? "bg-sky-500"
+			? "bg-[#8B5A2B]"
 			: status === PaymentStatus.DEPOSIT_PAID
-				? "bg-orange-500"
+				? "bg-sky-500"
 				: "bg-emerald-500";
 	return (
 		<span
@@ -251,12 +257,25 @@ function StatusDot({ status }: { status: PaymentStatus }) {
 	);
 }
 
-function getSeatColorClasses(type: TableType, status: PaymentStatus) {
+function getSeatColorClasses(
+	table: TableWithReservation,
+	status: PaymentStatus,
+) {
+	const hasExtraPax = Boolean(
+		table.reservation && table.reservation.pax > table.capacity,
+	);
+	const typeColor =
+		table.type === TableType.VVIP ? "text-[#B02029]" : "text-[#d5a91b]";
+
 	if (status !== PaymentStatus.AVAILABLE) {
-		return "border-gray-500 bg-gray-500 text-white opacity-90";
+		return cn(
+			"bg-[#6B6D70] opacity-90",
+			typeColor,
+			hasExtraPax ? "border-black ring-3 ring-black" : "border-[#6B6D70]",
+		);
 	}
 
-	return type === TableType.VVIP
-		? "border-[#f4d8d8] bg-[#8b1e2d] text-[#FFEAEA]"
+	return table.type === TableType.VVIP
+		? "border-[#B02029] bg-[#B02029] text-[#FFEAEA]"
 		: "border-[#b68f18] bg-[#d5a91b] text-slate-900";
 }
